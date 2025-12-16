@@ -1,6 +1,6 @@
 # React Store
 
-A [Zustand](https://zustand-demo.pmnd.rs/) simplified clone with a watcher feature that supports all data types.
+A [Zustand](https://zustand-demo.pmnd.rs/) simplified clone.
 
 ## Demo
 
