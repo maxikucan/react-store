@@ -10,7 +10,7 @@ A [Zustand](https://zustand-demo.pmnd.rs/) simplified clone with a watcher featu
 
 - **Multi-type support**: Works with objects, primitives (string, number, boolean), arrays, functions, and union types
 - **Smart state merging**: Objects use partial updates, primitives use full replacement
-- **Watch functionality**: Subscribe to specific state changes with selectors
+- **State change listeners**: Execute callbacks on state changes for side effects (logging, persistence, etc.)
 - **TypeScript support**: Full type safety for all supported data types
 - **React integration**: Built on `useSyncExternalStore` for optimal React performance
 
@@ -75,23 +75,32 @@ useArray.setState([1, 2, 3]); // Replace entire array
 useArray.setState(prev => [...prev, 4]); // Add to array
 ```
 
-### Watch Functionality
+### State Change Listeners
+
+Execute side effects when state changes - think of it as a "useEffect at a distance":
 
 ```typescript
-// Watch for specific changes
-useCounter.watch(
-	state => state.count, // Selector
-	(newCount, oldCount) => {
-		// Callback
-		console.log(`Count changed from ${oldCount} to ${newCount}`);
-	}
-);
+// Logging
+useCounter.onStateChange((newState, prevState) => {
+	console.log(`Count changed from ${prevState.count} to ${newState.count}`);
+});
 
-// Watch primitive stores
-useNumber.watch(
-	state => state, // Identity selector for primitives
-	(newVal, oldVal) => console.log(`Number: ${oldVal} → ${newVal}`)
-);
+// Persistence to localStorage
+useCounter.onStateChange((newState) => {
+	localStorage.setItem('counter', JSON.stringify(newState));
+});
+
+// Conditional side effects
+useCounter.onStateChange((newState, prevState) => {
+	if (newState.count > prevState.count) {
+		console.log('Counter increased!');
+	}
+});
+
+// Works with primitive stores too
+useNumber.onStateChange((newVal, oldVal) => {
+	console.log(`Number: ${oldVal} → ${newVal}`);
+});
 ```
 
 ### API Reference
@@ -104,7 +113,7 @@ Each store created with `createStore` provides:
 - `store.setState(value)` - Set state directly
 - `store.setState(updater)` - Set state with function
 - `store.subscribe(listener)` - Subscribe to any state changes
-- `store.watch(selector, callback)` - Watch specific state changes
+- `store.onStateChange(callback)` - Execute side effects when state changes
 
 ### Type Behavior
 

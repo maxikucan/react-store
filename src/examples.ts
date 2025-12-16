@@ -53,7 +53,7 @@ export const useTodos = createStore<TodoState>((set, get) => ({
 	}
 }));
 
-// 7. Function state (not sure if makese sense, but supported)
+// 7. Function state (not sure if makes sense, but supported)
 export const useFunction = createStore<() => string>(() => {
 	return () => 'initial function';
 });

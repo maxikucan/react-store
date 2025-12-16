@@ -1,14 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as examples from './examples';
 import './styles.css';
 
 export default function App() {
 	const [watchState, setWatchState] = useState<number | null>(null);
 
-	examples.useCounter.watch(
-		state => state.count,
-		newValue => setWatchState(newValue)
-	);
+	useEffect(() => {
+		// Register listener only once when component mounts
+		const unsubscribe = examples.useCounter.onStateChange(() => {
+			// Executes a callback whenever the counter state changes
+			setWatchState(prev => (prev === null ? 1 : prev + 1));
+		});
+
+		// Cleanup: remove listener when component unmounts
+		return unsubscribe;
+	}, []);
 
 	return (
 		<>

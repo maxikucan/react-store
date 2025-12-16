@@ -1,2 +1,2 @@
-export type { IsObject, StateUpdate, StateCreator, Watcher } from './core';
+export type { IsObject, StateUpdate, StateCreator, StateChangeListener } from './core';
 export { createStore } from './core';

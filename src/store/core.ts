@@ -28,19 +28,14 @@ export type StateCreator<StateType> = (
 ) => StateType;
 
 /**
- * Internal type for state watchers.
+ * Callback function type for state change listeners.
+ * Called whenever the state changes with both the new and previous state.
  *
  * @template StateType - The type of the state
- * @template SelectedValue - The type of the selected value
+ * @param newState - The new state after the change
+ * @param prevState - The previous state before the change
  */
-export type Watcher<StateType, SelectedValue> = {
-	/** Function to select a part of the state */
-	selector: (state: StateType) => SelectedValue;
-	/** Callback function called when the selected value changes */
-	callback: (newValue: SelectedValue, oldValue: SelectedValue) => void;
-	/** Previous value to detect changes */
-	prev: SelectedValue;
-};
+export type StateChangeListener<StateType> = (newState: StateType, prevState: StateType) => void;
 
 /**
  * Creates a new store with the given state creator function.
@@ -65,8 +60,7 @@ export type Watcher<StateType, SelectedValue> = {
  */
 export function createStore<T>(createState: StateCreator<T>) {
 	const listeners = new Set<() => void>();
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const watchers = new Set<Watcher<T, any>>();
+	const stateChangeListeners = new Set<StateChangeListener<T>>();
 
 	/**
 	 * Internal state
@@ -99,6 +93,7 @@ export function createStore<T>(createState: StateCreator<T>) {
 	 * setState(prev => prev + 1); // Function update
 	 */
 	function setState(update: StateUpdate<T> | ((prev: T) => StateUpdate<T>)): void {
+		const prevState = state;
 		let nextState: StateUpdate<T>;
 
 		// Check if update is a function that should be called with current state
@@ -123,15 +118,10 @@ export function createStore<T>(createState: StateCreator<T>) {
 			}
 		}
 
-		for (const watcher of watchers) {
-			const newValue = watcher.selector(state);
+		// Notify state change listeners with new and previous state
+		stateChangeListeners.forEach(listener => listener(state, prevState));
 
-			if (newValue !== watcher.prev) {
-				watcher.callback(newValue, watcher.prev);
-				watcher.prev = newValue;
-			}
-		}
-
+		// Notify React subscribers
 		listeners.forEach(listener => listener());
 	}
 
@@ -155,30 +145,36 @@ export function createStore<T>(createState: StateCreator<T>) {
 	}
 
 	/**
-	 * Watches for changes to a specific part of the state using a selector function.
-	 * The callback is only called when the selected value actually changes.
+	 * Registers a callback to be executed whenever the state changes.
+	 * Useful for side effects like logging, persistence, analytics, etc.
+	 * Think of it as a "useEffect at a distance" - runs outside of React components.
 	 *
-	 * @template SelectedValue - The type of the selected value
-	 * @param selector - Function to select a part of the state to watch
-	 * @param callback - Function called when the selected value changes
-	 * @returns Unwatch function
+	 * @param listener - Function called with new and previous state on every state change
+	 * @returns Unsubscribe function to remove the listener
 	 *
 	 * @example
-	 * const unwatch = store.watch(
-	 *   state => state.count,
-	 *   (newCount, oldCount) => console.log(`Count: ${oldCount} → ${newCount}`)
-	 * );
+	 * // Logging state changes
+	 * const unsubscribe = store.onStateChange((newState, prevState) => {
+	 *   console.log('State changed from', prevState, 'to', newState);
+	 * });
+	 *
+	 * @example
+	 * // Persist to localStorage
+	 * store.onStateChange((newState) => {
+	 *   localStorage.setItem('myStore', JSON.stringify(newState));
+	 * });
+	 *
+	 * @example
+	 * // Conditional side effects
+	 * store.onStateChange((newState, prevState) => {
+	 *   if (newState.count > prevState.count) {
+	 *     console.log('Counter increased!');
+	 *   }
+	 * });
 	 */
-	function watch<SelectedValue>(selector: (state: T) => SelectedValue, callback: (newValue: SelectedValue, oldValue: SelectedValue) => void): () => void {
-		const watcher: Watcher<T, SelectedValue> = {
-			selector,
-			callback,
-			prev: selector(state)
-		};
-
-		watchers.add(watcher);
-
-		return () => watchers.delete(watcher);
+	function onStateChange(listener: StateChangeListener<T>): () => void {
+		stateChangeListeners.add(listener);
+		return () => stateChangeListeners.delete(listener);
 	}
 
 	/**
@@ -205,6 +201,6 @@ export function createStore<T>(createState: StateCreator<T>) {
 		getState,
 		setState,
 		subscribe,
-		watch
+		onStateChange
 	});
 }
